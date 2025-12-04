@@ -1,0 +1,13 @@
+{% extends 'templates/layouts/page.njk' %}
+
+{% from service + "/content.njk" import content %}
+
+{% set mainClasses = "govuk-main-wrapper--l" %}
+
+{% block content %}
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
+      {{ content() | safe }}
+    </div>
+  </div>
+{% endblock %}
