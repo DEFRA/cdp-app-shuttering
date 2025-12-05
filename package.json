@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "create:interactive": "npm run create:interactive --workspace=cdp-app-shuttering-template",
+    "test:workflow": "npm run test:workflow --workspace=cdp-app-shuttering-template --",
     "format": "prettier --write \"**/*.{js,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,json,md}\" && npm run format:check --workspaces",
     "postinstall": "npm run setup:husky",

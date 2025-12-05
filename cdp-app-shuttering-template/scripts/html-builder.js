@@ -2,7 +2,7 @@ import { readFile, writeFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { minify } from 'html-minifier-terser'
 import nunjucks from 'nunjucks'
-import chalk from 'chalk'
+import { logger } from './logger.js'
 
 const { NODE_ENV = 'development' } = process.env
 const doMinify = NODE_ENV === 'production'
@@ -12,7 +12,7 @@ async function getGovFrontendVersion(pkgFilePath) {
   const packageJson = JSON.parse(fileContent)
   const version = packageJson.dependencies['govuk-frontend']
 
-  console.log(chalk.blue(`govuk-frontend version: ${version}`))
+  logger.info(`govuk-frontend version: ${version}`)
   return version
 }
 
@@ -42,7 +42,7 @@ async function buildHtmlAndAssets() {
   try {
     webpackManifest.contents = JSON.parse(await readFile(manifestPath, 'utf-8'))
   } catch (error) {
-    console.error(chalk.red(error))
+    logger.error(error)
   }
 
   const globals = {
@@ -79,6 +79,6 @@ async function buildHtmlAndAssets() {
   }
 }
 
-console.log(chalk.blue(`Building html and assets for service: ${service}...`))
+logger.info(`Building html and assets for service: ${service}...`)
 await buildHtmlAndAssets()
-console.log(chalk.blue('Build complete!'))
+logger.info('Build complete!')

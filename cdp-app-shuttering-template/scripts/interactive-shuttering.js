@@ -6,7 +6,7 @@ import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import open from 'open'
-import chalk from 'chalk'
+import { logger } from './logger.js'
 
 const program = new Command()
 
@@ -38,9 +38,7 @@ async function runInteractiveCli() {
       }
     ])
 
-    console.log(
-      chalk.blue(`\nCreating folder structure for service: ${serviceName}`)
-    )
+    logger.info(`\nCreating folder structure for service: ${serviceName}`)
 
     // Step 2: Create folder and copy content.njk
     const serviceFolder = path.resolve(`../tenants/${serviceName}`)
@@ -48,19 +46,17 @@ async function runInteractiveCli() {
 
     if (!fs.existsSync(serviceFolder)) {
       fs.mkdirSync(serviceFolder, { recursive: true })
-      console.log(chalk.blue(`Created folder: ${serviceFolder}`))
+      logger.info(`Created folder: ${serviceFolder}`)
     }
 
     // Copy content.njk
     const sourceFile = path.join(templateFolder, 'content.njk')
     const destFile = path.join(serviceFolder, 'content.njk')
     fs.copyFileSync(sourceFile, destFile)
-    console.log(chalk.blue(`Copied content.njk to ${destFile}`))
+    logger.info(`Copied content.njk to ${destFile}`)
 
     // Step 3: Prompt user to edit the file
-    console.log(
-      chalk.blue(`\nPlease edit the content.njk file at:\n  ${destFile}\n`)
-    )
+    logger.info(`\nPlease edit the content.njk file at:\n  ${destFile}\n`)
     const { readyToBuild } = await inquirer.prompt([
       {
         type: 'confirm',
@@ -71,11 +67,7 @@ async function runInteractiveCli() {
     ])
 
     if (!readyToBuild) {
-      console.log(
-        chalk.blue(
-          'Please edit the content.njk file and run this script again.'
-        )
-      )
+      logger.info('Please edit the content.njk file and run this script again.')
       process.exit(0)
     }
 
@@ -83,25 +75,25 @@ async function runInteractiveCli() {
     let satisfied = false
     while (!satisfied) {
       // Step 4: Build the HTML
-      console.log(chalk.blue('Building HTML...'))
+      logger.info('Building HTML...')
       try {
         execSync(`npm run build:dev -- --service=${serviceName}`, {
           stdio: 'inherit',
           cwd: process.cwd()
         })
-        console.log(chalk.blue('Build complete!'))
+        logger.info('Build complete!')
       } catch (error) {
-        console.error(chalk.red(`Build failed: ${error.message}`))
+        logger.error(`Build failed: ${error.message}`)
         process.exit(1)
       }
 
       // Step 5: Open in browser
       const htmlPath = path.resolve('.dist/index.html')
       if (fs.existsSync(htmlPath)) {
-        console.log(chalk.blue(`Opening ${htmlPath} in browser...`))
+        logger.info(`Opening ${htmlPath} in browser...`)
         await open(htmlPath)
       } else {
-        console.error(chalk.red('HTML file not found at .dist/index.html'))
+        logger.error('HTML file not found at .dist/index.html')
         process.exit(1)
       }
 
@@ -119,9 +111,7 @@ async function runInteractiveCli() {
         satisfied = true
       } else {
         // Step 7: Allow re-editing and re-rendering
-        console.log(
-          chalk.blue(`\nEdit the content.njk file when ready:\n  ${destFile}\n`)
-        )
+        logger.info(`\nEdit the content.njk file when ready:\n  ${destFile}\n`)
         const { continueEditing } = await inquirer.prompt([
           {
             type: 'confirm',
@@ -132,9 +122,7 @@ async function runInteractiveCli() {
         ])
 
         if (!continueEditing) {
-          console.log(
-            chalk.blue('Exiting. You can run this script again when ready.')
-          )
+          logger.info('Exiting. You can run this script again when ready.')
           process.exit(0)
         }
       }
@@ -152,24 +140,24 @@ async function runInteractiveCli() {
 
     if (shouldCommit) {
       try {
-        console.log(chalk.blue('Creating git commit...'))
+        logger.info('Creating git commit...')
         execSync(`git add ../tenants/${serviceName}`, { stdio: 'inherit' })
         execSync(
           `git commit -m "Committing ${serviceName} custom shuttering content"`,
           { stdio: 'inherit' }
         )
-        console.log(chalk.blue('Git commit created successfully!'))
+        logger.info('Git commit created successfully!')
       } catch (error) {
-        console.error(chalk.red(`Git commit failed: ${error.message}`))
-        console.log(chalk.blue('You can manually commit the changes later.'))
+        logger.error(`Git commit failed: ${error.message}`)
+        logger.info('You can manually commit the changes later.')
       }
     }
 
-    console.log(chalk.blue('\n✅ All done! Your shuttering page is ready.'))
-    console.log(chalk.blue(`Service folder: ${serviceFolder}`))
-    console.log(chalk.blue(`HTML output: ${path.resolve('.dist/index.html')}`))
+    logger.info('\nAll done! Your shuttering page is ready.')
+    logger.info(`Service folder: ${serviceFolder}`)
+    logger.info(`HTML output: ${path.resolve('.dist/index.html')}`)
   } catch (error) {
-    console.error(chalk.red(`An error occurred: ${error}`))
+    logger.error(`An error occurred: ${error}`)
     process.exit(1)
   }
 }

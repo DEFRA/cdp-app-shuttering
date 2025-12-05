@@ -1,6 +1,11 @@
 import fs from 'fs'
 import path from 'path'
-import chalk from 'chalk'
+import { logger } from './logger.js'
+
+/**
+ * Script to create a new service content folder by copying from the common template
+ * Usage: npm run create:content -- --service=<your-service-name>
+ */
 
 const src = 'src/templates/common'
 
@@ -9,10 +14,8 @@ const serviceArg = args.find((arg) => arg.startsWith('--service='))
 const service = serviceArg ? serviceArg.split('=')[1] : undefined
 
 if (!service) {
-  console.error(chalk.red('Error: Please provide a service name'))
-  console.info(
-    chalk.blue('Usage: npm run create:content -- --service=<your-service-name>')
-  )
+  logger.error('Error: Please provide a service name')
+  logger.info('Usage: npm run create:content -- --service=<your-service-name>')
   process.exit(1)
 }
 
@@ -29,11 +32,11 @@ function copyDir(source, destination) {
       copyDir(srcPath, destPath)
     } else {
       fs.copyFileSync(srcPath, destPath)
-      console.info(chalk.blue(`Copied: ${srcPath} -> ${destPath}`))
+      logger.info(`Copied: ${srcPath} -> ${destPath}`)
     }
   }
 }
 
-console.info(chalk.blue(`Copying from ${src} to ${service}...`))
+logger.info(`Copying from ${src} to ${service}...`)
 copyDir(src, `../tenants/${service}`)
-console.info(chalk.blue('Copy complete!'))
+logger.info('Copy complete!')

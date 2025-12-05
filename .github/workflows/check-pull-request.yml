@@ -27,3 +27,176 @@ jobs:
 
       - name: Security audit
         run: npm run security-audit
+
+  validate-shuttering-pages:
+    name: Validate and Preview Shuttering Pages
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: cdp-app-shuttering-template/package-lock.json
+
+      - name: Install dependencies
+        working-directory: cdp-app-shuttering-template
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: cdp-app-shuttering-template
+        run: npx playwright install chromium --with-deps
+
+      - name: Detect changed content files
+        id: detect-changes
+        working-directory: cdp-app-shuttering-template
+        run: |
+          echo "Detecting changed content.njk files..."
+
+          OUTPUT=$(npm run detect:changes -- --base-branch=origin/${{ github.base_ref }} 2>&1 || true)
+          echo "$OUTPUT"
+
+          JSON_OUTPUT=$(echo "$OUTPUT" | grep -E '^\{.*\}$' | tail -1)
+
+          if [ -z "$JSON_OUTPUT" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          SERVICES=$(echo "$JSON_OUTPUT" | jq -r '.services[]' | tr '\n' ' ')
+          COUNT=$(echo "$JSON_OUTPUT" | jq -r '.count')
+
+          if [ "$COUNT" -eq "0" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "services=$SERVICES" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and validate shuttering pages
+        if: steps.detect-changes.outputs.has_changes == 'true'
+        id: validate
+        working-directory: cdp-app-shuttering-template
+        run: |
+          SERVICES="${{ steps.detect-changes.outputs.services }}"
+          VALIDATION_FAILED=false
+
+          for SERVICE in $SERVICES; do
+            echo "Building shuttering page for: $SERVICE"
+
+            if ! npm run build:prod -- --service="$SERVICE"; then
+              echo "Build failed for $SERVICE"
+              VALIDATION_FAILED=true
+              continue
+            fi
+
+            echo "Validating HTML for: $SERVICE"
+            if ! npm run validate:html -- --service="$SERVICE"; then
+              echo "Validation failed for $SERVICE"
+              VALIDATION_FAILED=true
+            fi
+          done
+
+          if [ "$VALIDATION_FAILED" = true ]; then
+            echo "validation_passed=false" >> $GITHUB_OUTPUT
+          else
+            echo "validation_passed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate validation comment
+        if: always() && steps.detect-changes.outputs.has_changes == 'true'
+        working-directory: cdp-app-shuttering-template
+        run: npm run post:validation-comment || true
+
+      - name: Post validation results
+        if: always() && steps.detect-changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: cdp-app-shuttering-template/.dist/validation-comment.md
+
+      - name: Generate screenshots
+        if: steps.detect-changes.outputs.has_changes == 'true' && steps.validate.outputs.validation_passed == 'true'
+        working-directory: cdp-app-shuttering-template
+        run: |
+          SERVICES="${{ steps.detect-changes.outputs.services }}"
+
+          for SERVICE in $SERVICES; do
+            echo "Generating screenshot for: $SERVICE"
+            npm run generate:screenshot -- --service="$SERVICE"
+          done
+
+      - name: Upload screenshots to branch
+        if: steps.detect-changes.outputs.has_changes == 'true' && steps.validate.outputs.validation_passed == 'true'
+        id: upload-screenshots
+        run: |
+          BRANCH_NAME="screenshots"
+          REPO="${{ github.repository }}"
+          PR_NUM="${{ github.event.pull_request.number }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Save current HEAD
+          CURRENT_SHA=$(git rev-parse HEAD)
+
+          # Create orphan branch for screenshots if it doesn't exist
+          git fetch origin "$BRANCH_NAME" 2>/dev/null || true
+
+          if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH_NAME"; then
+            git checkout "$BRANCH_NAME"
+          else
+            git checkout --orphan "$BRANCH_NAME"
+            git rm -rf . 2>/dev/null || true
+          fi
+
+          # Copy screenshots with PR number prefix to avoid conflicts
+          mkdir -p screenshots
+          for f in cdp-app-shuttering-template/.dist/screenshots/*.png; do
+            if [ -f "$f" ]; then
+              NAME=$(basename "$f")
+              cp "$f" "screenshots/pr-${PR_NUM}-${NAME}"
+            fi
+          done
+
+          # Commit and push
+          git add screenshots/
+          git commit -m "Update screenshots for PR #$PR_NUM" --allow-empty
+          git push origin "$BRANCH_NAME" --force
+
+          # Get the commit SHA for cache busting
+          SCREENSHOT_SHA=$(git rev-parse HEAD)
+
+          # Generate markdown for each screenshot and write to file
+          COMMENT_FILE=$(mktemp)
+          echo "## Shuttering Page Preview" > "$COMMENT_FILE"
+          echo "" >> "$COMMENT_FILE"
+          for f in screenshots/pr-${PR_NUM}-*.png; do
+            if [ -f "$f" ]; then
+              # Extract service name (remove pr-X- prefix and .png suffix)
+              FILENAME=$(basename "$f" .png)
+              SERVICE_NAME=${FILENAME#pr-${PR_NUM}-}
+              echo "### ${SERVICE_NAME}" >> "$COMMENT_FILE"
+              echo "![${SERVICE_NAME}](https://raw.githubusercontent.com/${REPO}/${BRANCH_NAME}/${f}?${SCREENSHOT_SHA})" >> "$COMMENT_FILE"
+              echo "" >> "$COMMENT_FILE"
+            fi
+          done
+
+          # Copy comment file to workspace for the next step
+          cp "$COMMENT_FILE" "$GITHUB_WORKSPACE/screenshot-comment.md"
+
+          # Return to original branch
+          git checkout "$CURRENT_SHA" --force
+
+      - name: Post screenshot comment
+        if: steps.detect-changes.outputs.has_changes == 'true' && steps.validate.outputs.validation_passed == 'true'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: screenshot-comment.md
