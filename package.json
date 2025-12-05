@@ -1,0 +1,27 @@
+{
+  "name": "cdp-app-shuttering",
+  "version": "0.1.0",
+  "description": "CDP App Shuttering",
+  "engines": {
+    "node": ">=22.17.1"
+  },
+  "type": "module",
+  "workspaces": [
+    "cdp-app-shuttering-template"
+  ],
+  "scripts": {
+    "create:interactive": "npm run create:interactive --workspace=cdp-app-shuttering-template",
+    "format": "prettier --write \"**/*.{js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,json,md}\" && npm run format:check --workspaces",
+    "postinstall": "npm run setup:husky",
+    "lint": "npm run lint --workspaces",
+    "security-audit": "npm audit --audit-level=high",
+    "setup:husky": "node -e \"try { (await import('husky')).default() } catch (e) { if (e.code !== 'ERR_MODULE_NOT_FOUND') throw e }\" --input-type module"
+  },
+  "author": "Defra DDTS",
+  "license": "OGL-UK-3.0",
+  "devDependencies": {
+    "husky": "9.1.7",
+    "prettier": "3.7.4"
+  }
+}

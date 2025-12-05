@@ -2,3 +2,4 @@
 .npm/
 .vscode
 .idea
+node_modules

@@ -1,0 +1,55 @@
+{% extends "govuk/template.njk" %}
+
+{% from "govuk/components/header/macro.njk" import govukHeader %}
+{% from "govuk/components/footer/macro.njk" import govukFooter %}
+
+{% set mainClasses = "app-main-wrapper" %}
+
+{% block headIcons %}
+  <link rel="icon" sizes="48x48" href="{{ getAssetPath('images/favicon.ico') }}">
+  <link rel="icon" sizes="any" href="{{ getAssetPath('images/favicon.svg') }}" type="image/svg+xml">
+  <link rel="mask-icon" href="{{ getAssetPath('images/govuk-icon-mask.svg') }}" color="{{ themeColor }}">
+  <link rel="apple-touch-icon" href="{{ getAssetPath('images/govuk-icon-180.png') }}">
+  <link rel="manifest" href="{{ getAssetPath('manifest.json') }}">
+{% endblock %}
+
+{% block head %}
+  <link href="{{ getAssetPath('application.css') }}" rel="stylesheet">
+  <meta name="govuk-frontend-version" content="{{ govukFrontendVersion }}">
+{% endblock %}
+
+{% block pageTitle %}
+  {{ pageTitle }}
+{% endblock %}
+
+{% block header %}
+  {{ govukHeader({
+    serviceName: serviceName
+  }) }}
+{% endblock %}
+
+{% block content %}{% endblock %}
+
+{% block footer %}
+  {{ govukFooter({
+    rebrand: true,
+    meta: {
+      items: [
+        {
+          href: "https://www.gov.uk/help/privacy-notice",
+          text: "Privacy"
+        },
+        {
+          href: "https://www.gov.uk/help/cookies",
+          text: "Cookies"
+        },
+        {
+          href: "https://www.gov.uk/help/accessibility-statement",
+          text: "Accessibility statement"
+        }
+      ]
+    }
+  }) }}
+{% endblock %}
+
+{% block bodyEnd %}{% endblock %}
