@@ -7,7 +7,7 @@ CDP App Shuttering - Tools and templates for creating shuttering pages for CDP a
 - [Local development set up](#local-development-set-up)
 - [Interactive Shuttering Page Creator](#interactive-shuttering-page-creator)
 - [Code Quality](#code-quality)
-- [More Information on the CDP Shuttering Template](#more-information-on-the-cdp-shuttering-template)
+- [More Information on the CDP App Shuttering Template](#more-information-on-the-cdp-app-shuttering-template)
 
 ## Requirements
 
@@ -77,7 +77,7 @@ npm run lint
 
 These commands run across both the root repository and all workspace packages.
 
-## More Information on the CDP Shuttering Template
+## More Information on the CDP App Shuttering Template
 
-For detailed documentation on the CDP shuttering template, including manual setup and build options, see
+For detailed documentation on the CDP app shuttering template, including manual setup and build options, see
 the [cdp-app-shuttering-template README](./cdp-app-shuttering-template/README.md).
